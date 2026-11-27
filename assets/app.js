@@ -202,6 +202,21 @@ function renderSuggest() {
     : '';
 }
 
+// 主視覺背後的縮圖牆：從索引裡挑有縮圖的影片
+function renderMosaic() {
+  const el = document.getElementById('mosaic');
+  const thumbs = state.index.map((v) => safeUrl(v.thumbnail)).filter(Boolean);
+  // 打散後取 40 張（每次載入順序不同）
+  for (let i = thumbs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [thumbs[i], thumbs[j]] = [thumbs[j], thumbs[i]];
+  }
+  el.innerHTML = thumbs
+    .slice(0, 40)
+    .map((t) => `<img src="${esc(t)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">`)
+    .join('');
+}
+
 function renderChips(all) {
   const counts = {};
   for (const v of all) counts[v.source] = (counts[v.source] || 0) + 1;
@@ -697,6 +712,10 @@ async function load() {
   els.updated.innerHTML = [mode, esc(updated)].filter(Boolean).join('。');
 
   renderSuggest();
+  renderMosaic();
+  if (!hasExtension() && !backend?.searxng) {
+    document.getElementById('heroSub').textContent = '影片散在各個平台和網站，在這裡輸入一次就全部查完。';
+  }
   scheduleLive(true);
   render();
 }

@@ -362,3 +362,90 @@ img { display: block; }
   .sources { width: 100%; }
   .toolbar-right { width: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 12px 20px; }
 }
+
+/* =========================================================
+   v2：深色主視覺。背後是索引裡的影片縮圖牆，
+   頁面載入時一道放映燈光掃過一次，代表「掃描全網」。
+   ========================================================= */
+:root { --night: #0F1733; }
+
+.masthead {
+  position: relative; overflow: hidden; isolation: isolate;
+  background: var(--night); color: #fff;
+  padding: 28px 0 44px;
+}
+.masthead::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60% 80% at 15% 0%, rgba(255, 201, 60, .16), transparent 60%),
+    linear-gradient(180deg, rgba(15, 23, 51, .55) 0%, rgba(15, 23, 51, .86) 55%, var(--night) 100%);
+}
+.hero-mosaic {
+  position: absolute; inset: -60px -40px; z-index: -2;
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px;
+  transform: rotate(-5deg) scale(1.12); opacity: .32;
+}
+.hero-mosaic img {
+  width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px;
+  background: rgba(255, 255, 255, .06);
+}
+.hero-beam {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 28%; z-index: -1; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 201, 60, .22), transparent);
+  transform: translateX(-120%); animation: scan 2.2s cubic-bezier(.4, 0, .2, 1) .25s 1 both;
+}
+@keyframes scan { to { transform: translateX(460%); } }
+
+.hero-inner { position: relative; }
+.brand-row { margin-bottom: 36px; }
+.brand { color: #fff; }
+.brand-mark { width: 34px; height: 34px; }
+.brand-mark .mark-frame { fill: none; stroke: var(--lamp); stroke-width: 2.6; stroke-linecap: round; }
+.brand-mark .mark-play { fill: #fff; }
+.brand-mark rect { display: none; }
+
+.hero-title {
+  margin: 0 0 10px; max-width: 18ch;
+  font-size: clamp(34px, 5.2vw, 60px); font-weight: 700; line-height: 1.12; letter-spacing: -0.01em;
+}
+.hero-sub { margin: 0 0 26px; max-width: 60ch; font-size: 16px; color: rgba(255, 255, 255, .72); }
+
+.search input {
+  border: 0; height: 66px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .35);
+}
+.search input:focus { box-shadow: 0 0 0 4px var(--lamp), 0 24px 60px rgba(0, 0, 0, .35); }
+
+.suggest { margin-top: 16px; gap: 8px; }
+.suggest-label { color: rgba(255, 255, 255, .55); margin-right: 4px; }
+.suggest-item {
+  padding: 4px 12px; border-radius: 999px; text-decoration: none;
+  background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); color: #E6EAF5;
+}
+.suggest-item:hover { background: rgba(255, 255, 255, .16); color: #fff; }
+
+.ext-banner {
+  margin-top: 22px;
+  background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); border-left: 4px solid var(--lamp);
+  backdrop-filter: blur(6px);
+}
+.ext-banner p { color: rgba(255, 255, 255, .8); }
+
+.toolbar {
+  background: rgba(238, 241, 246, .86);
+  backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  margin-top: 4px;
+}
+
+/* 縮圖在滑過時微微放大，回應使用者的動作 */
+.frame img { transition: transform .35s cubic-bezier(.2, .7, .2, 1); }
+.video-hit:hover .frame img, .video-hit:focus-visible .frame img { transform: scale(1.045); }
+.video-hit:hover .video-title, .video-hit:focus-visible ~ .video-text .video-title { color: var(--signal); }
+.video:hover .video-title { color: var(--signal); }
+
+@media (max-width: 600px) {
+  .masthead { padding: 20px 0 32px; }
+  .brand-row { margin-bottom: 24px; }
+  .hero-mosaic { grid-template-columns: repeat(4, 1fr); }
+  .hero-sub { font-size: 15px; }
+}
