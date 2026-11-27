@@ -4,6 +4,7 @@
 
 - **純前端網站**：放在 GitHub Pages，不需要伺服器。
 - **爬蟲跑在 GitHub Actions**：每 3 小時自動抓一次，結果存成 `data/videos.json`。
+- **全網自動搜尋**：依關鍵字自動找出全網的影片頁面，不用手動填網址（Brave 影片搜尋 API），找到的頁面再自動打開解析播放器與影片檔。
 - **插件式來源**：每個平台是一個 adapter，要加新來源只要寫一個檔案。
 - **下載**：只有來源本身提供下載時才顯示下載按鈕（Internet Archive、Wikimedia Commons、Pexels、Pixabay、創作者開放下載的 Vimeo 影片，以及頁面上有 `<a download>` 連結的網站）。
 
@@ -12,6 +13,7 @@
 ```
 GitHub Actions（每 3 小時）
   └─ node crawler/index.mjs
+       ├─ adapters/discover.mjs     全網影片搜尋（Brave API，需金鑰）→ 自動打開結果頁解析
        ├─ adapters/youtube.mjs      YouTube Data API（需金鑰，只嵌入播放）
        ├─ adapters/vimeo.mjs        Vimeo API（需 token）
        ├─ adapters/archive.mjs      Internet Archive（免金鑰，可下載）
@@ -34,6 +36,7 @@ GitHub Pages：index.html + assets/app.js 讀 JSON，在瀏覽器內搜尋
 
 | Secret 名稱 | 去哪裡申請 |
 | --- | --- |
+| `BRAVE_API_KEY` | https://api-dashboard.search.brave.com → 訂閱 Search 方案 → 建立 API key。每月有 5 美元免費額度（需綁卡驗證），全網自動搜尋靠這把金鑰 |
 | `YOUTUBE_API_KEY` | Google Cloud Console → 建立專案 → 啟用「YouTube Data API v3」→ 建立 API 金鑰 |
 | `PEXELS_API_KEY` | https://www.pexels.com/api/ |
 | `PIXABAY_API_KEY` | https://pixabay.com/api/docs/ （登入後頁面上就有） |
@@ -53,20 +56,35 @@ GitHub Pages：index.html + assets/app.js 讀 JSON，在瀏覽器內搜尋
 - `sources.youtube.maxQueries`：YouTube 只用前幾個關鍵字（免費配額每天 10,000 單位，每次搜尋耗 100）
 - `web.seeds`：通用爬蟲的起始網址
 
-### 通用網頁爬蟲
+### 全網自動搜尋（discover）
 
-`web.seeds` 裡放任何網址，爬蟲會從那裡開始抓：
+設好 `BRAVE_API_KEY` 就會自動運作：每個關鍵字向 Brave 影片搜尋要結果（任何網站都可能出現），YouTube、Vimeo、Bilibili 的結果直接轉成嵌入播放；其他網站會實際打開頁面，用通用爬蟲的解析器找播放器、影片檔與下載連結。
+
+`sources.discover` 的設定：
+
+- `perQuery`：每個關鍵字取幾筆結果（最多 50）
+- `deepLimit`：每次執行最多打開幾個結果頁做深入解析
+- `minIntervalHours`：最短執行間隔。預設 6 小時，6 個關鍵字一個月約 720 次請求，在免費額度內
+- `country` / `searchLang` / `safesearch`：搜尋地區、語言、安全搜尋（off / moderate / strict）
+
+### 通用網頁爬蟲（選用）
+
+全網搜尋已經會自動找網站；`web.seeds` 是給你想「固定深入爬某個網站」時用的：
 
 ```json
 { "url": "https://example.com/videos/", "depth": 1, "maxPages": 30, "sameHost": true, "include": "/videos/" }
+{ "search": "https://example.com/search?q={query}", "depth": 1, "maxPages": 10 }
+{ "sitemap": "https://example.com/video-sitemap.xml" }
 ```
 
+- `search`：站內搜尋網址模板，`{query}` 會自動換成 `queries` 裡的每個關鍵字
+- `sitemap`：網站的影片 sitemap，一次拿到整站影片清單
 - `depth`：從起始頁往下跟連結幾層
 - `maxPages`：這個起點最多抓幾頁
 - `sameHost`：只跟同網域的連結（預設 true）
 - `include`：只跟網址符合這個正規表示式的連結（選填）
 
-它讀的是網站自己公開標註的影片資訊：schema.org `VideoObject`（JSON-LD）、Open Graph `og:video`、`<video>` 標籤。爬蟲會遵守 robots.txt，同一網站每次請求間隔 `delayMs` 毫秒。
+解析順序：schema.org `VideoObject`（JSON-LD）→ Open Graph `og:video` / Twitter Card → `<video>` 標籤 → 嵌入播放器 `<iframe>` → 直接連到影片檔的連結。爬蟲會遵守 robots.txt，同一網站每次請求間隔 `delayMs` 毫秒。
 
 ## 新增來源
 

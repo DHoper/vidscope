@@ -3,6 +3,15 @@
   "perQuery": 20,
   "maxItems": 3000,
   "sources": {
+    "discover": {
+      "enabled": true,
+      "perQuery": 20,
+      "deepLimit": 40,
+      "delayMs": 1500,
+      "minIntervalHours": 6,
+      "country": "TW",
+      "safesearch": "moderate"
+    },
     "youtube": { "enabled": true, "maxQueries": 3 },
     "archive": { "enabled": true },
     "wikimedia": { "enabled": true },
@@ -16,8 +25,6 @@
     "delayMs": 2000,
     "depth": 1,
     "maxPages": 30,
-    "seeds": [
-      { "url": "https://www.nasa.gov/videos/", "depth": 1, "maxPages": 20 }
-    ]
+    "seeds": []
   }
 }

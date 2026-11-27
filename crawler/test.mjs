@@ -1,6 +1,7 @@
 // 離線測試：不連網，只測解析邏輯。用法：node crawler/test.mjs
 import assert from 'node:assert/strict';
-import { extractVideos } from './adapters/web.mjs';
+import { extractVideos, parseVideoSitemap } from './adapters/web.mjs';
+import { knownEmbed } from './adapters/discover.mjs';
 import { parse } from './lib/robots.mjs';
 import { toSeconds } from './lib/normalize.mjs';
 
@@ -45,6 +46,38 @@ assert.equal(v3.length, 1);
 assert.equal(v3[0].fileUrl, 'https://site.test/a/clip.webm');
 assert.equal(v3[0].thumbnail, 'https://site.test/a/p.png');
 assert.equal(v3[0].downloadUrl, null);
+
+// 嵌入播放器 iframe
+const html4 = `<title>Episode page</title><iframe src="https://www.youtube.com/embed/abcDEF12345" title="Ep 1"></iframe>
+<iframe src="https://ads.example.com/banner"></iframe>`;
+const v4 = extractVideos(html4, 'https://blog.test/post');
+assert.equal(v4.length, 1);
+assert.equal(v4[0].embedUrl, 'https://www.youtube.com/embed/abcDEF12345');
+assert.equal(v4[0].title, 'Ep 1');
+assert.equal(v4[0].thumbnail, 'https://i.ytimg.com/vi/abcDEF12345/hqdefault.jpg');
+
+// 直接連到影片檔的連結
+const v5 = extractVideos('<title>Files</title><a href="/media/a.mp4">A</a>', 'https://files.test/');
+assert.equal(v5.length, 1);
+assert.equal(v5[0].fileUrl, 'https://files.test/media/a.mp4');
+
+// 影片 sitemap
+const sm = `<urlset><url><loc>https://s.test/v/1</loc><video:video>
+<video:thumbnail_loc>https://s.test/t1.jpg</video:thumbnail_loc><video:title><![CDATA[Clip One]]></video:title>
+<video:description>Desc</video:description><video:content_loc>https://s.test/1.mp4</video:content_loc>
+<video:duration>95</video:duration></video:video></url></urlset>`;
+const v6 = parseVideoSitemap(sm, 'https://s.test/sitemap.xml');
+assert.equal(v6.length, 1);
+assert.equal(v6[0].title, 'Clip One');
+assert.equal(v6[0].fileUrl, 'https://s.test/1.mp4');
+assert.equal(v6[0].duration, 95);
+
+// 已知平台轉嵌入網址
+assert.equal(knownEmbed('https://www.youtube.com/watch?v=abc123XYZ_0'), 'https://www.youtube.com/embed/abc123XYZ_0');
+assert.equal(knownEmbed('https://youtu.be/abc123XYZ_0'), 'https://www.youtube.com/embed/abc123XYZ_0');
+assert.equal(knownEmbed('https://vimeo.com/123456'), 'https://player.vimeo.com/video/123456');
+assert.equal(knownEmbed('https://www.bilibili.com/video/BV1xx411c7mD/'), 'https://player.bilibili.com/player.html?bvid=BV1xx411c7mD&autoplay=0');
+assert.equal(knownEmbed('https://example.com/watch/1'), null);
 
 // 沒有影片的頁面
 assert.equal(extractVideos('<html><body>hi</body></html>', 'https://x.test/').length, 0);

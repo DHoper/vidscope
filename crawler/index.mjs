@@ -15,9 +15,10 @@ import * as pixabay from './adapters/pixabay.mjs';
 import * as vimeo from './adapters/vimeo.mjs';
 import * as dailymotion from './adapters/dailymotion.mjs';
 import * as web from './adapters/web.mjs';
+import * as discover from './adapters/discover.mjs';
 
 // 新增來源：在 adapters/ 寫一個檔案（匯出 name、label、needs、search 或 crawl），再加進這個陣列
-const ADAPTERS = [youtube, archive, wikimedia, pexels, pixabay, vimeo, dailymotion, web];
+const ADAPTERS = [discover, youtube, archive, wikimedia, pexels, pixabay, vimeo, dailymotion, web];
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_DIR = join(ROOT, 'data');
@@ -39,7 +40,8 @@ async function main() {
   const perQuery = config.perQuery || 20;
 
   const fresh = [];
-  const report = {};
+  const prevMeta = await readJson(META_FILE, {});
+  const report = { ...(prevMeta.lastRun || {}) };
 
   for (const adapter of ADAPTERS) {
     if (only.length && !only.includes(adapter.name)) continue;
@@ -54,13 +56,19 @@ async function main() {
       report[adapter.name] = { label: adapter.label, status: 'no-key', missing };
       continue;
     }
+    // 付費 API 用 minIntervalHours 控制頻率（手動指定來源執行時不受限）
+    const prevRan = Date.parse(prevMeta.lastRun?.[adapter.name]?.ranAt || '');
+    if (!only.length && srcCfg.minIntervalHours && prevRan && Date.now() - prevRan < srcCfg.minIntervalHours * 3600e3) {
+      console.log(`[${adapter.name}] 距離上次執行不到 ${srcCfg.minIntervalHours} 小時，這次略過`);
+      continue;
+    }
 
     console.log(`[${adapter.name}] 開始`);
     const got = [];
     const errors = [];
     if (adapter.crawl) {
       try {
-        got.push(...(await adapter.crawl(srcCfg)));
+        got.push(...(await adapter.crawl({ ...srcCfg, queries })));
       } catch (e) {
         errors.push(e.message);
       }
@@ -68,7 +76,7 @@ async function main() {
       const qs = srcCfg.maxQueries ? queries.slice(0, srcCfg.maxQueries) : queries;
       for (const q of qs) {
         try {
-          got.push(...(await adapter.search(q, { limit: perQuery })));
+          got.push(...(await adapter.search(q, { limit: srcCfg.perQuery || perQuery, config: srcCfg })));
         } catch (e) {
           errors.push(`${q}: ${e.message}`);
         }
@@ -82,6 +90,7 @@ async function main() {
       status: errors.length && !got.length ? 'error' : 'ok',
       count: got.length,
       errors: errors.slice(0, 5),
+      ranAt: new Date().toISOString(),
     };
   }
 
