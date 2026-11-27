@@ -96,8 +96,8 @@ select {
   transition: transform .15s, border-color .15s;
 }
 .card:hover, .card:focus-visible { transform: translateY(-2px); border-color: #3a4256; outline: none; }
-.thumb { position: relative; aspect-ratio: 16 / 9; background: var(--panel-2); }
-.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb { position: relative; aspect-ratio: 16 / 9; background: var(--panel-2); overflow: hidden; flex-shrink: 0; }
+.thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .thumb .noimg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 32px; }
 .badge {
   position: absolute; font-size: 12px; padding: 2px 8px; border-radius: 6px;
