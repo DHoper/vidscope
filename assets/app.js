@@ -258,7 +258,7 @@ function skeletons(n) {
 let extNotice = '';
 window.addEventListener('message', (e) => {
   if (e.source !== window || e.data?.type !== 'vidscope:status') return;
-  extNotice = String(e.data.text || '');
+  extNotice = String(e.data.text || ''); // 空字串代表清掉提示
   render();
   if (extNotice.startsWith('驗證完成')) setTimeout(() => { extNotice = ''; render(); }, 4000);
 });

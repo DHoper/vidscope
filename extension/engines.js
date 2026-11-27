@@ -11,7 +11,7 @@ import { isAllowed } from './vendor/lib/robots.mjs';
 import { extractVideos } from './vendor/adapters/web.mjs';
 import { knownEmbed } from './vendor/adapters/discover.mjs';
 
-const TIMEOUT_MS = 12000;
+const TIMEOUT_MS = 8000; // 單一網站最多等 8 秒，慢的網站直接跳過
 
 async function getText(url) {
   const ctrl = new AbortController();
@@ -338,13 +338,27 @@ export async function searchWeb(q, { page = 0, limit = 500, ctx = {}, includeYou
     }
   }
 
-  // 補資料：YouTube 用 oEmbed，其他網站最多打開 10 頁
+  // 補資料：YouTube 用 oEmbed；其他網站打開頁面檢查（一般最多 20 個，「只看可下載」時全部檢查）
+  // 整批最多花 DEEP_BUDGET_MS，時間到還沒檢查完的就先跳過，不讓一兩個很慢的網站卡住整個搜尋
+  const DEEP_BUDGET_MS = deepAll ? 60000 : 30000;
+  const deadline = Date.now() + DEEP_BUDGET_MS;
+  const needsPage = merged.filter((it) => !youtubeId(it.url) && !knownEmbed(it.url)).length;
   let opened = 0;
-  const enriched = await pool(merged, deepAll ? 8 : 6, (it) => {
+  let checked = 0;
+  const report = () => {
+    if (deepAll && needsPage) ctx.notify?.(`第 ${page + 1} 批：已檢查 ${checked} / ${needsPage} 個網站有沒有提供下載`);
+  };
+  report();
+  const enriched = await pool(merged, deepAll ? 10 : 6, async (it) => {
     if (youtubeId(it.url)) return it.title && it.thumbnail ? it : enrichYouTube(it);
     if (knownEmbed(it.url)) return it;
-    return deepAll || opened++ < 20 ? enrichPage(it) : it;
+    if (!(deepAll || opened++ < 20) || Date.now() > deadline) return it;
+    const done = await enrichPage(it);
+    checked++;
+    if (checked % 3 === 0 || checked === needsPage) report();
+    return done;
   });
+  if (deepAll) ctx.notify?.(''); // 清掉進度提示
 
   const results = enriched
     .filter((it) => it.title)

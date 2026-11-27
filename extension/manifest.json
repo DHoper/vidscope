@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Vidscope 全網搜尋",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "讓 Vidscope 網站在你搜尋時，同時用 Google、Bing、YouTube 搜尋整個網路的影片。",
   "icons": {
     "16": "icons/16.png",
