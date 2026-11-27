@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-11-27T05:45:22.242Z",
-  "total": 473,
+  "updatedAt": "2026-11-27T16:43:12.843Z",
+  "total": 714,
   "counts": {
-    "discover": 120,
-    "wikimedia": 119,
-    "dailymotion": 118,
-    "archive": 116
+    "wikimedia": 121,
+    "discover": 148,
+    "dailymotion": 225,
+    "archive": 220
   },
   "sources": {
     "discover": "全網搜尋",
@@ -23,20 +23,64 @@
       "label": "Dailymotion",
       "status": "ok",
       "count": 120,
-      "errors": []
+      "errors": [],
+      "ranAt": "2026-11-27T16:43:12.816Z"
     },
     "web": {
       "label": "網頁",
       "status": "ok",
       "count": 0,
-      "errors": []
+      "errors": [],
+      "ranAt": "2026-11-27T16:43:12.816Z"
     },
     "discover": {
       "label": "全網搜尋",
       "status": "ok",
       "count": 120,
       "errors": [],
-      "ranAt": "2026-11-27T05:45:22.215Z"
+      "ranAt": "2026-11-27T16:43:02.987Z"
+    },
+    "youtube": {
+      "label": "YouTube",
+      "status": "no-key",
+      "missing": [
+        "YOUTUBE_API_KEY"
+      ]
+    },
+    "archive": {
+      "label": "Internet Archive",
+      "status": "ok",
+      "count": 120,
+      "errors": [],
+      "ranAt": "2026-11-27T16:43:05.503Z"
+    },
+    "wikimedia": {
+      "label": "Wikimedia Commons",
+      "status": "ok",
+      "count": 120,
+      "errors": [],
+      "ranAt": "2026-11-27T16:43:08.866Z"
+    },
+    "pexels": {
+      "label": "Pexels",
+      "status": "no-key",
+      "missing": [
+        "PEXELS_API_KEY"
+      ]
+    },
+    "pixabay": {
+      "label": "Pixabay",
+      "status": "no-key",
+      "missing": [
+        "PIXABAY_API_KEY"
+      ]
+    },
+    "vimeo": {
+      "label": "Vimeo",
+      "status": "no-key",
+      "missing": [
+        "VIMEO_TOKEN"
+      ]
     }
   }
 }
