@@ -1,5 +1,5 @@
 // Pexels 免費素材影片。需要環境變數 PEXELS_API_KEY。授權允許下載。
-import { getJson } from '../lib/http.mjs';
+import { env, getJson } from '../lib/http.mjs';
 import { makeVideo } from '../lib/normalize.mjs';
 
 export const name = 'pexels';
@@ -9,7 +9,7 @@ export const needs = ['PEXELS_API_KEY'];
 export async function search(query, { limit = 20 } = {}) {
   const params = new URLSearchParams({ query, per_page: String(Math.min(limit, 80)) });
   const data = await getJson(`https://api.pexels.com/videos/search?${params}`, {
-    headers: { Authorization: process.env.PEXELS_API_KEY },
+    headers: { Authorization: env.PEXELS_API_KEY },
   });
   return (data.videos || []).map((v) => {
     const files = (v.video_files || []).filter((f) => f.link);

@@ -1,6 +1,6 @@
 // Vimeo API。需要環境變數 VIMEO_TOKEN（在 developer.vimeo.com 建立 App 取得的 access token）。
 // 只有創作者開放下載、且 API 有回傳下載連結時才提供下載。
-import { getJson } from '../lib/http.mjs';
+import { env, getJson } from '../lib/http.mjs';
 import { makeVideo } from '../lib/normalize.mjs';
 
 export const name = 'vimeo';
@@ -10,7 +10,7 @@ export const needs = ['VIMEO_TOKEN'];
 export async function search(query, { limit = 20 } = {}) {
   const params = new URLSearchParams({ query, per_page: String(Math.min(limit, 100)), sort: 'date', direction: 'desc' });
   const data = await getJson(`https://api.vimeo.com/videos?${params}`, {
-    headers: { Authorization: `bearer ${process.env.VIMEO_TOKEN}`, Accept: 'application/vnd.vimeo.*+json;version=3.4' },
+    headers: { Authorization: `bearer ${env.VIMEO_TOKEN}`, Accept: 'application/vnd.vimeo.*+json;version=3.4' },
   });
   return (data.data || []).map((v) => {
     const id = (v.uri || '').split('/').pop();

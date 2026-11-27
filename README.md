@@ -8,6 +8,30 @@
 - **插件式來源**：每個平台是一個 adapter，要加新來源只要寫一個檔案。
 - **下載**：只有來源本身提供下載時才顯示下載按鈕（Internet Archive、Wikimedia Commons、Pexels、Pixabay、創作者開放下載的 Vimeo 影片，以及頁面上有 `<a download>` 連結的網站）。
 
+## 兩種用法
+
+| | 網頁版（GitHub Pages） | 本機完整版 |
+| --- | --- | --- |
+| 怎麼用 | 直接打開 https://dhoper.github.io/vidscope/ | 下載後 `docker compose up -d` |
+| 搜尋時即時查詢 | Internet Archive、Wikimedia Commons、Dailymotion | 以上全部，加上**全網搜尋**（SearXNG），以及有設金鑰的 YouTube、Vimeo、Pexels、Pixabay |
+| 預先爬好的索引 | 有（每 3 小時更新） | 有，而且你搜過的結果會存進本機索引 |
+
+## 本機完整版（全網即時搜尋）
+
+需要先安裝 [Docker Desktop](https://www.docker.com/products/docker-desktop/)。
+
+```bash
+git clone https://github.com/DHoper/vidscope.git
+cd vidscope
+docker compose up -d
+```
+
+打開 http://localhost:8080 。每次搜尋，本機的 SearXNG 會即時去多個搜尋引擎找影片，不認得的網站會再打開頁面找播放器。關閉用 `docker compose down`。
+
+想加上 YouTube 等需要金鑰的來源：把 `.env.example` 複製成 `.env`，填入金鑰後重新 `docker compose up -d`。
+
+不想用 Docker 也可以 `node server/index.mjs`（Node.js 18 以上），但這樣沒有全網搜尋，除非你另外跑一個 SearXNG 並設定 `SEARXNG_URL`。
+
 ## 架構
 
 ```

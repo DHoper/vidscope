@@ -1,7 +1,7 @@
 // YouTube Data API v3。需要環境變數 YOUTUBE_API_KEY。
 // 注意配額：search.list 每次耗 100 單位，免費每日 10,000 單位。
 // 只提供嵌入播放，不提供下載（YouTube 服務條款禁止）。
-import { getJson } from '../lib/http.mjs';
+import { env, getJson } from '../lib/http.mjs';
 import { makeVideo } from '../lib/normalize.mjs';
 
 export const name = 'youtube';
@@ -9,7 +9,7 @@ export const label = 'YouTube';
 export const needs = ['YOUTUBE_API_KEY'];
 
 export async function search(query, { limit = 20 } = {}) {
-  const key = process.env.YOUTUBE_API_KEY;
+  const key = env.YOUTUBE_API_KEY;
   const params = new URLSearchParams({
     part: 'snippet', type: 'video', q: query, maxResults: String(Math.min(limit, 50)),
     order: 'date', key,

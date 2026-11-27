@@ -3,69 +3,99 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Vidscope｜多平台影片搜尋</title>
-  <meta name="description" content="跨平台影片搜尋聚合：YouTube、Vimeo、Internet Archive、Wikimedia Commons、Pexels、Pixabay、Dailymotion 與任意網站。">
+  <title>Vidscope｜在一個地方搜尋各平台的影片</title>
+  <meta name="description" content="跨平台影片搜尋：YouTube、Vimeo、Internet Archive、Wikimedia Commons、Pexels、Pixabay、Dailymotion，以及爬蟲在全網找到的影片。">
+  <meta name="theme-color" content="#EEF1F6">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='6' width='26' height='20' rx='4' fill='%23182447'/%3E%3Cpath d='M13 11v10l9-5z' fill='%23FFC93C'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css?v=3">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css?v=4">
 </head>
 <body>
-  <header class="top">
-    <div class="wrap top-inner">
-      <a class="brand" href="./">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <span class="brand-name">Vidscope</span>
-      </a>
+  <a class="skip" href="#grid">跳到影片列表</a>
+
+  <header class="masthead">
+    <div class="wrap">
+      <div class="brand-row">
+        <a class="brand" href="./" aria-label="Vidscope 首頁">
+          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="6" width="26" height="20" rx="4"/><path d="M13 11v10l9-5z"/></svg>
+          <span class="brand-name">Vidscope</span>
+        </a>
+        <p class="tagline">在一個地方搜尋各平台的影片</p>
+      </div>
+
       <form class="search" id="searchForm" role="search">
-        <input id="q" type="search" placeholder="搜尋標題、描述、頻道…" autocomplete="off" aria-label="搜尋影片">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="輸入片名、頻道或關鍵字" autocomplete="off" aria-label="搜尋影片" enterkeyhint="search">
+        <kbd class="search-kbd" aria-hidden="true">/</kbd>
       </form>
+
+      <div class="suggest" id="suggest" aria-label="常用關鍵字"></div>
     </div>
   </header>
 
   <main class="wrap">
-    <section class="controls" aria-label="篩選">
-      <div class="chips" id="sourceChips"></div>
-      <div class="controls-right">
-        <label class="toggle">
+    <section class="toolbar" aria-label="篩選與排序">
+      <div class="sources" id="sourceChips" role="group" aria-label="依來源篩選"></div>
+      <div class="toolbar-right">
+        <label class="switch">
           <input type="checkbox" id="downloadOnly">
+          <span class="switch-track" aria-hidden="true"></span>
           <span>只看可下載</span>
         </label>
-        <select id="sort" aria-label="排序">
-          <option value="new">最新</option>
-          <option value="old">最舊</option>
-          <option value="long">片長：長到短</option>
-          <option value="short">片長：短到長</option>
-        </select>
+        <label class="sort">
+          <span class="visually-hidden">排序</span>
+          <select id="sort">
+            <option value="relevant">最相關的在前</option>
+            <option value="new">最新的在前</option>
+            <option value="old">最舊的在前</option>
+            <option value="long">片長由長到短</option>
+            <option value="short">片長由短到長</option>
+          </select>
+        </label>
       </div>
     </section>
 
     <p class="status" id="status" aria-live="polite"></p>
-    <section class="grid" id="grid"></section>
-    <div class="more"><button id="moreBtn" class="btn" hidden>載入更多</button></div>
+    <section class="grid" id="grid" tabindex="-1"></section>
+    <div class="more">
+      <div id="sentinel" aria-hidden="true"></div>
+      <button id="moreBtn" class="btn" hidden>顯示更多影片</button>
+    </div>
   </main>
 
   <footer class="foot">
     <div class="wrap foot-inner">
       <span id="updated"></span>
-      <span>影片版權屬原作者與原平台所有；本站只建立索引並連回來源。</span>
-      <a href="https://github.com/DHoper/vidscope" target="_blank" rel="noopener">GitHub</a>
+      <span>影片版權屬原作者與原平台所有，本站只建立索引並連回來源。</span>
+      <a href="https://github.com/DHoper/vidscope" target="_blank" rel="noopener">原始碼在 GitHub</a>
     </div>
   </footer>
 
-  <dialog id="player" class="player">
-    <div class="player-head">
-      <h2 id="pTitle"></h2>
-      <button class="icon-btn" id="closeBtn" aria-label="關閉">✕</button>
-    </div>
-    <div class="player-media" id="pMedia"></div>
-    <div class="player-body">
-      <p class="player-meta" id="pMeta"></p>
-      <p class="player-desc" id="pDesc"></p>
-      <div class="player-actions" id="pActions"></div>
+  <dialog id="player" class="theater" aria-labelledby="pTitle">
+    <button class="theater-close" id="closeBtn" aria-label="關閉播放器">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <button class="theater-nav prev" id="prevBtn" aria-label="上一部">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>
+    </button>
+    <button class="theater-nav next" id="nextBtn" aria-label="下一部">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+    </button>
+    <div class="theater-inner">
+      <div class="theater-media" id="pMedia"></div>
+      <div class="theater-info">
+        <div class="theater-text">
+          <h2 id="pTitle"></h2>
+          <p class="theater-meta" id="pMeta"></p>
+          <p class="theater-desc" id="pDesc"></p>
+        </div>
+        <div class="theater-actions" id="pActions"></div>
+      </div>
     </div>
   </dialog>
 
-  <script src="assets/app.js?v=3" type="module"></script>
+  <script src="assets/app.js?v=4" type="module"></script>
 </body>
 </html>

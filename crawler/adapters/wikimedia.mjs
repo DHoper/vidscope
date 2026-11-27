@@ -9,7 +9,7 @@ export const needs = [];
 export async function search(query, { limit = 20 } = {}) {
   const params = new URLSearchParams({
     action: 'query', format: 'json', generator: 'search',
-    gsrsearch: `filetype:video ${query}`, gsrnamespace: '6', gsrlimit: String(limit),
+    gsrsearch: `filetype:video ${query}`, gsrnamespace: '6', gsrlimit: String(limit), origin: '*',
     prop: 'imageinfo', iiprop: 'url|mime|extmetadata|timestamp|user', iiurlwidth: '480',
   });
   const data = await getJson(`https://commons.wikimedia.org/w/api.php?${params}`);

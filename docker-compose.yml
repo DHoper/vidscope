@@ -1,0 +1,33 @@
+# Vidscope 本機完整版：網站 + 全網即時搜尋
+#
+#   docker compose up -d      啟動，然後打開 http://localhost:8080
+#   docker compose down       關閉
+#
+# 想啟用 YouTube、Vimeo、Pexels、Pixabay 的即時搜尋，把 .env.example 複製成 .env 並填入金鑰。
+services:
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    environment:
+      # 只在本機內部使用，不對外開放；想換可在 .env 設定 SEARXNG_SECRET
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-vidscope-local-only-secret}
+
+  app:
+    image: node:22-alpine
+    restart: unless-stopped
+    working_dir: /app
+    command: node server/index.mjs
+    volumes:
+      - ./:/app
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      - PORT=8080
+      - SEARXNG_URL=http://searxng:8080
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      - searxng
