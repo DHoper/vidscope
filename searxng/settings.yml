@@ -1,0 +1,22 @@
+# SearXNG 設定：只在 GitHub Actions 裡臨時啟動，給爬蟲當全網搜尋用，跑完就關。
+# secret_key 由 workflow 透過環境變數 SEARXNG_SECRET 每次隨機產生。
+use_default_settings: true
+
+general:
+  instance_name: "vidscope-crawler"
+
+server:
+  bind_address: "0.0.0.0"
+  port: 8080
+  limiter: false        # 只有爬蟲自己用，不需要防濫用
+  public_instance: false
+  image_proxy: false
+
+search:
+  safe_search: 0
+  formats:
+    - html
+    - json              # 爬蟲用 JSON 格式取結果
+
+ui:
+  default_locale: "zh-Hant-TW"

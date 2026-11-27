@@ -58,7 +58,9 @@ GitHub Pages：index.html + assets/app.js 讀 JSON，在瀏覽器內搜尋
 
 ### 全網自動搜尋（discover）
 
-設好 `BRAVE_API_KEY` 就會自動運作：每個關鍵字向 Brave 影片搜尋要結果（任何網站都可能出現），YouTube、Vimeo、Bilibili 的結果直接轉成嵌入播放；其他網站會實際打開頁面，用通用爬蟲的解析器找播放器、影片檔與下載連結。
+預設用 **SearXNG**（免費開源的搜尋聚合器）：workflow 每次執行時在 GitHub Actions 裡臨時啟動一個 SearXNG（設定在 `searxng/settings.yml`），不需要任何金鑰。若 SearXNG 啟動失敗而你有設 `BRAVE_API_KEY`，會改用 Brave；用 Brave 時建議把 `minIntervalHours` 設成 6 以控制費用。
+
+每個關鍵字向搜尋提供者要影片結果（任何網站都可能出現），YouTube、Vimeo、Bilibili 的結果直接轉成嵌入播放；其他網站會實際打開頁面，用通用爬蟲的解析器找播放器、影片檔與下載連結。
 
 `sources.discover` 的設定：
 

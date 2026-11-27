@@ -51,6 +51,7 @@ async function main() {
       continue;
     }
     const missing = adapter.needs.filter((k) => !process.env[k]);
+    if (adapter.isConfigured && !adapter.isConfigured()) missing.push('（未設定搜尋提供者）');
     if (missing.length) {
       console.log(`[${adapter.name}] 缺少 ${missing.join(', ')}，略過`);
       report[adapter.name] = { label: adapter.label, status: 'no-key', missing };

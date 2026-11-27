@@ -8,7 +8,7 @@
       "perQuery": 20,
       "deepLimit": 40,
       "delayMs": 1500,
-      "minIntervalHours": 6,
+      "minIntervalHours": 0,
       "country": "TW",
       "safesearch": "moderate"
     },

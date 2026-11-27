@@ -1,13 +1,15 @@
-// 全網影片搜尋：用 Brave Search 的影片搜尋 API，依 config.queries 自動找出全網的影片頁面，
-// 不需要手動填網址。需要環境變數 BRAVE_API_KEY（https://api-dashboard.search.brave.com）。
+// 全網影片搜尋：依 config.queries 自動找出全網的影片頁面，不需要手動填網址。
+//
+// 搜尋提供者（有設定哪個就用哪個，兩個都有時優先 SearXNG）：
+//   - SearXNG：免費開源的搜尋聚合器。workflow 會在 GitHub Actions 裡臨時啟動一個，
+//     並設定環境變數 SEARXNG_URL（例如 http://localhost:8080）。
+//   - Brave Search API：環境變數 BRAVE_API_KEY。每月 5 美元免費額度，超過按次計費。
 //
 // 流程：
-//   1. 每個關鍵字呼叫 Brave 影片搜尋，取得任何網站的影片結果（標題、網址、縮圖、片長）
-//   2. 已知平台（YouTube / Vimeo / Dailymotion / Bilibili）直接轉成嵌入網址
+//   1. 每個關鍵字向搜尋提供者要影片結果（任何網站都可能出現）
+//   2. 已知平台（YouTube / Vimeo / Bilibili，以及有 Player ID 的 Dailymotion）直接轉成嵌入網址
 //   3. 其他網站：對前 deepLimit 筆結果實際打開頁面（遵守 robots.txt），
 //      用通用爬蟲的解析器找出播放器、影片檔與下載連結
-//
-// 費用：Brave 每月有 5 美元免費額度，超過按次計費。index.mjs 會依 minIntervalHours 控制頻率。
 import { getJson, getText, sleep } from '../lib/http.mjs';
 import { isAllowed } from '../lib/robots.mjs';
 import { makeVideo } from '../lib/normalize.mjs';
@@ -15,11 +17,45 @@ import { extractVideos } from './web.mjs';
 
 export const name = 'discover';
 export const label = '全網搜尋';
-export const needs = ['BRAVE_API_KEY'];
+export const needs = []; // 用 isConfigured 判斷：SEARXNG_URL 或 BRAVE_API_KEY 有一個就好
+
+export function isConfigured() {
+  return Boolean(process.env.SEARXNG_URL || process.env.BRAVE_API_KEY);
+}
 
 let deepUsed = 0;
 
-export async function search(query, { limit = 20, config = {} } = {}) {
+// ---------- 搜尋提供者：都轉成同一種格式 ----------
+// { url, title, description, channel, thumbnail, duration, publishedAt, embedUrl }
+
+async function searchSearxng(query, limit, config) {
+  const base = process.env.SEARXNG_URL.replace(/\/$/, '');
+  const results = [];
+  // SearXNG 每頁約 10–20 筆，多翻幾頁湊到 limit
+  for (let page = 1; page <= 3 && results.length < limit; page++) {
+    const params = new URLSearchParams({ q: query, format: 'json', categories: 'videos', pageno: String(page) });
+    if (config.searchLang) params.set('language', config.searchLang);
+    if (config.safesearch != null) params.set('safesearch', String({ off: 0, moderate: 1, strict: 2 }[config.safesearch] ?? config.safesearch));
+    const data = await getJson(`${base}/search?${params}`);
+    const batch = data.results || [];
+    if (!batch.length) break;
+    for (const r of batch) {
+      results.push({
+        url: r.url,
+        title: r.title,
+        description: r.content,
+        channel: r.author || (r.engines || [r.engine]).filter(Boolean).join(', ') || null,
+        thumbnail: r.thumbnail || r.thumbnail_src || r.img_src,
+        duration: r.length,
+        publishedAt: r.publishedDate,
+        embedUrl: r.iframe_src || null,
+      });
+    }
+  }
+  return results.slice(0, limit);
+}
+
+async function searchBrave(query, limit, config) {
   const params = new URLSearchParams({ q: query, count: String(Math.min(limit, 50)) });
   if (config.country) params.set('country', config.country);
   if (config.searchLang) params.set('search_lang', config.searchLang);
@@ -27,24 +63,45 @@ export async function search(query, { limit = 20, config = {} } = {}) {
   const data = await getJson(`https://api.search.brave.com/res/v1/videos/search?${params}`, {
     headers: { 'X-Subscription-Token': process.env.BRAVE_API_KEY, Accept: 'application/json' },
   });
+  return (data.results || []).map((r) => ({
+    url: r.url,
+    title: r.title,
+    description: r.description,
+    channel: r.video?.creator || r.video?.publisher || r.meta_url?.hostname,
+    thumbnail: r.thumbnail?.src || r.thumbnail?.original,
+    duration: r.video?.duration,
+    publishedAt: r.page_age || r.age,
+    embedUrl: null,
+  }));
+}
+
+export async function search(query, { limit = 20, config = {} } = {}) {
+  const raw = process.env.SEARXNG_URL
+    ? await searchSearxng(query, limit, config)
+    : await searchBrave(query, limit, config);
 
   const deepLimit = config.deepLimit ?? 40; // 每次執行最多實際打開幾個頁面
   const delayMs = config.delayMs ?? 1500;
   const out = [];
+  const seen = new Set();
 
-  for (const r of data.results || []) {
-    if (!r.url) continue;
+  for (const r of raw) {
+    if (!r.url || seen.has(r.url)) continue;
+    seen.add(r.url);
     const base = {
       source: name, sourceId: r.url, query,
       title: r.title, description: r.description,
-      channel: r.video?.creator || r.video?.publisher || r.meta_url?.hostname || hostOf(r.url),
+      channel: r.channel || hostOf(r.url),
       url: r.url,
-      thumbnail: r.thumbnail?.src || r.thumbnail?.original,
-      duration: r.video?.duration,
-      publishedAt: r.page_age || r.age,
+      thumbnail: r.thumbnail,
+      duration: r.duration,
+      publishedAt: r.publishedAt,
     };
 
-    const known = knownEmbed(r.url);
+    // SearXNG 給的 iframe_src 也能用；但 Dailymotion 舊版嵌入網址會回 403，排除
+    const providerEmbed =
+      r.embedUrl && /^https?:/.test(r.embedUrl) && !/dailymotion\.com\/embed/.test(r.embedUrl) ? r.embedUrl : null;
+    const known = knownEmbed(r.url) || providerEmbed;
     if (known) {
       out.push(makeVideo({ ...base, embedUrl: known }));
       continue;

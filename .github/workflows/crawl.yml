@@ -32,8 +32,27 @@ jobs:
       - name: Test parsers
         run: node crawler/test.mjs
 
+      # 臨時啟動一個 SearXNG 給全網搜尋用（免費、免金鑰），job 結束就自動消失
+      - name: Start SearXNG
+        run: |
+          docker run -d --name searxng -p 8080:8080 \
+            -v "$PWD/searxng/settings.yml:/etc/searxng/settings.yml:ro" \
+            -e SEARXNG_SECRET="$(openssl rand -hex 32)" \
+            searxng/searxng:latest
+          for i in $(seq 1 45); do
+            if curl -sf "http://localhost:8080/search?q=test&format=json" > /dev/null; then
+              echo "SearXNG 已啟動"; exit 0
+            fi
+            sleep 2
+          done
+          echo "SearXNG 啟動失敗，全網搜尋這次會略過"
+          docker logs searxng | tail -50
+          # 不讓整個 job 失敗，其他來源照跑
+          echo "SEARXNG_FAILED=1" >> "$GITHUB_ENV"
+
       - name: Crawl
         env:
+          SEARXNG_URL: ${{ env.SEARXNG_FAILED != '1' && 'http://localhost:8080' || '' }}
           BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
