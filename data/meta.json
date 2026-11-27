@@ -1,12 +1,14 @@
 {
-  "updatedAt": "2026-11-27T04:23:17.897Z",
-  "total": 353,
+  "updatedAt": "2026-11-27T05:45:22.242Z",
+  "total": 473,
   "counts": {
+    "discover": 120,
     "wikimedia": 119,
     "dailymotion": 118,
     "archive": 116
   },
   "sources": {
+    "discover": "全網搜尋",
     "youtube": "YouTube",
     "archive": "Internet Archive",
     "wikimedia": "Wikimedia Commons",
@@ -28,6 +30,13 @@
       "status": "ok",
       "count": 0,
       "errors": []
+    },
+    "discover": {
+      "label": "全網搜尋",
+      "status": "ok",
+      "count": 120,
+      "errors": [],
+      "ranAt": "2026-11-27T05:45:22.215Z"
     }
   }
 }
