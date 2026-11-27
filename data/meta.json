@@ -1,0 +1,73 @@
+{
+  "updatedAt": "2026-11-27T04:18:52.512Z",
+  "total": 353,
+  "counts": {
+    "wikimedia": 119,
+    "dailymotion": 118,
+    "archive": 116
+  },
+  "sources": {
+    "youtube": "YouTube",
+    "archive": "Internet Archive",
+    "wikimedia": "Wikimedia Commons",
+    "pexels": "Pexels",
+    "pixabay": "Pixabay",
+    "vimeo": "Vimeo",
+    "dailymotion": "Dailymotion",
+    "web": "網頁"
+  },
+  "lastRun": {
+    "youtube": {
+      "label": "YouTube",
+      "status": "no-key",
+      "missing": [
+        "YOUTUBE_API_KEY"
+      ]
+    },
+    "archive": {
+      "label": "Internet Archive",
+      "status": "ok",
+      "count": 120,
+      "errors": []
+    },
+    "wikimedia": {
+      "label": "Wikimedia Commons",
+      "status": "ok",
+      "count": 120,
+      "errors": []
+    },
+    "pexels": {
+      "label": "Pexels",
+      "status": "no-key",
+      "missing": [
+        "PEXELS_API_KEY"
+      ]
+    },
+    "pixabay": {
+      "label": "Pixabay",
+      "status": "no-key",
+      "missing": [
+        "PIXABAY_API_KEY"
+      ]
+    },
+    "vimeo": {
+      "label": "Vimeo",
+      "status": "no-key",
+      "missing": [
+        "VIMEO_TOKEN"
+      ]
+    },
+    "dailymotion": {
+      "label": "Dailymotion",
+      "status": "ok",
+      "count": 120,
+      "errors": []
+    },
+    "web": {
+      "label": "網頁",
+      "status": "ok",
+      "count": 0,
+      "errors": []
+    }
+  }
+}
