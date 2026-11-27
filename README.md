@@ -38,6 +38,7 @@ GitHub Pages：index.html + assets/app.js 讀 JSON，在瀏覽器內搜尋
 | `PEXELS_API_KEY` | https://www.pexels.com/api/ |
 | `PIXABAY_API_KEY` | https://pixabay.com/api/docs/ （登入後頁面上就有） |
 | `VIMEO_TOKEN` | https://developer.vimeo.com/apps → 建立 App → 產生 access token（Public 權限即可） |
+| `DAILYMOTION_PLAYER_ID` | Dailymotion Partner HQ 建立播放器後取得的 Player ID。沒設定時 Dailymotion 影片不嵌入播放，只連回原始頁面 |
 
 設好後到 **Actions → Crawl videos → Run workflow** 手動跑一次。
 

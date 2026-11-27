@@ -38,6 +38,7 @@ jobs:
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           VIMEO_TOKEN: ${{ secrets.VIMEO_TOKEN }}
+          DAILYMOTION_PLAYER_ID: ${{ secrets.DAILYMOTION_PLAYER_ID }}
           ONLY_SOURCES: ${{ github.event.inputs.sources }}
         # ONLY_SOURCES 刻意不加引號，讓 "archive web" 拆成兩個參數
         run: node crawler/index.mjs $ONLY_SOURCES
