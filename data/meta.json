@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-27T04:18:52.512Z",
+  "updatedAt": "2026-11-27T04:23:17.897Z",
   "total": 353,
   "counts": {
     "wikimedia": 119,
@@ -17,46 +17,6 @@
     "web": "網頁"
   },
   "lastRun": {
-    "youtube": {
-      "label": "YouTube",
-      "status": "no-key",
-      "missing": [
-        "YOUTUBE_API_KEY"
-      ]
-    },
-    "archive": {
-      "label": "Internet Archive",
-      "status": "ok",
-      "count": 120,
-      "errors": []
-    },
-    "wikimedia": {
-      "label": "Wikimedia Commons",
-      "status": "ok",
-      "count": 120,
-      "errors": []
-    },
-    "pexels": {
-      "label": "Pexels",
-      "status": "no-key",
-      "missing": [
-        "PEXELS_API_KEY"
-      ]
-    },
-    "pixabay": {
-      "label": "Pixabay",
-      "status": "no-key",
-      "missing": [
-        "PIXABAY_API_KEY"
-      ]
-    },
-    "vimeo": {
-      "label": "Vimeo",
-      "status": "no-key",
-      "missing": [
-        "VIMEO_TOKEN"
-      ]
-    },
     "dailymotion": {
       "label": "Dailymotion",
       "status": "ok",
