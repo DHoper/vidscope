@@ -82,9 +82,15 @@ export function parseBing(html) {
   return out;
 }
 
-async function searchBing(q) {
-  const { text } = await getText(`https://www.bing.com/videos/search?q=${encodeURIComponent(q)}&FORM=HDRSC3`);
-  return parseBing(text);
+// 一次抓前幾頁（Bing 每頁約 35 筆），重複的之後會去掉
+async function searchBing(q, pages = 3) {
+  const urls = Array.from({ length: pages }, (_, i) =>
+    `https://www.bing.com/videos/search?q=${encodeURIComponent(q)}&FORM=HDRSC3${i ? `&first=${i * 35 + 1}` : ''}`,
+  );
+  const settled = await Promise.allSettled(urls.map((u) => getText(u)));
+  const ok = settled.filter((s) => s.status === 'fulfilled');
+  if (!ok.length) throw settled[0].reason;
+  return ok.flatMap((s) => parseBing(s.value.text));
 }
 
 // ---------- YouTube 站內搜尋 ----------
@@ -179,7 +185,7 @@ async function pool(items, size, fn) {
 }
 
 // ---------- 主流程 ----------
-export async function searchWeb(q, limit = 24) {
+export async function searchWeb(q, limit = 80) {
   const engines = { bing: searchBing, youtube: searchYouTube };
   const status = {};
   const settled = await Promise.allSettled(Object.values(engines).map((fn) => fn(q)));

@@ -7,7 +7,7 @@ window.addEventListener('message', (event) => {
   const msg = event.data;
   if (!msg || msg.type !== 'vidscope:search' || typeof msg.q !== 'string') return;
 
-  chrome.runtime.sendMessage({ type: 'search', q: msg.q.slice(0, 200), limit: Number(msg.limit) || 24 }, (resp) => {
+  chrome.runtime.sendMessage({ type: 'search', q: msg.q.slice(0, 200), limit: Math.min(Number(msg.limit) || 80, 150) }, (resp) => {
     const error = chrome.runtime.lastError?.message;
     window.postMessage(
       { type: 'vidscope:result', id: msg.id, ...(error ? { ok: false, error } : resp) },

@@ -350,7 +350,7 @@ async function runLive(q) {
   }
 
   const jobs = BROWSER_SOURCES.map((a) => [a.name, () => a.search(q, { limit: 24 })]);
-  if (hasExtension()) jobs.unshift(['discover', () => extensionSearch(q, 24)]);
+  if (hasExtension()) jobs.unshift(['discover', () => extensionSearch(q, 80)]);
   state.liveStatus = Object.fromEntries(jobs.map(([name]) => [name, 'loading']));
   render();
   await Promise.all(jobs.map(([name, run]) => run().then((list) => add(name, list), (e) => fail(name, e))));
