@@ -185,7 +185,7 @@ async function pool(items, size, fn) {
 }
 
 // ---------- 主流程 ----------
-export async function searchWeb(q, limit = 80) {
+export async function searchWeb(q, limit = 500) {
   const engines = { bing: searchBing, youtube: searchYouTube };
   const status = {};
   const settled = await Promise.allSettled(Object.values(engines).map((fn) => fn(q)));
