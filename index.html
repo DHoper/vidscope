@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vidscope｜多平台影片搜尋</title>
+  <meta name="description" content="跨平台影片搜尋聚合：YouTube、Vimeo、Internet Archive、Wikimedia Commons、Pexels、Pixabay、Dailymotion 與任意網站。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="brand" href="./">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">Vidscope</span>
+      </a>
+      <form class="search" id="searchForm" role="search">
+        <input id="q" type="search" placeholder="搜尋標題、描述、頻道…" autocomplete="off" aria-label="搜尋影片">
+      </form>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="controls" aria-label="篩選">
+      <div class="chips" id="sourceChips"></div>
+      <div class="controls-right">
+        <label class="toggle">
+          <input type="checkbox" id="downloadOnly">
+          <span>只看可下載</span>
+        </label>
+        <select id="sort" aria-label="排序">
+          <option value="new">最新</option>
+          <option value="old">最舊</option>
+          <option value="long">片長：長到短</option>
+          <option value="short">片長：短到長</option>
+        </select>
+      </div>
+    </section>
+
+    <p class="status" id="status" aria-live="polite"></p>
+    <section class="grid" id="grid"></section>
+    <div class="more"><button id="moreBtn" class="btn" hidden>載入更多</button></div>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot-inner">
+      <span id="updated"></span>
+      <span>影片版權屬原作者與原平台所有；本站只建立索引並連回來源。</span>
+      <a href="https://github.com/DHoper/vidscope" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </footer>
+
+  <dialog id="player" class="player">
+    <div class="player-head">
+      <h2 id="pTitle"></h2>
+      <button class="icon-btn" id="closeBtn" aria-label="關閉">✕</button>
+    </div>
+    <div class="player-media" id="pMedia"></div>
+    <div class="player-body">
+      <p class="player-meta" id="pMeta"></p>
+      <p class="player-desc" id="pDesc"></p>
+      <div class="player-actions" id="pActions"></div>
+    </div>
+  </dialog>
+
+  <script src="assets/app.js" type="module"></script>
+</body>
+</html>

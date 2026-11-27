@@ -1,0 +1,23 @@
+{
+  "queries": ["nature", "documentary", "music", "animation", "travel", "science"],
+  "perQuery": 20,
+  "maxItems": 3000,
+  "sources": {
+    "youtube": { "enabled": true, "maxQueries": 3 },
+    "archive": { "enabled": true },
+    "wikimedia": { "enabled": true },
+    "pexels": { "enabled": true },
+    "pixabay": { "enabled": true },
+    "vimeo": { "enabled": true },
+    "dailymotion": { "enabled": true }
+  },
+  "web": {
+    "enabled": true,
+    "delayMs": 2000,
+    "depth": 1,
+    "maxPages": 30,
+    "seeds": [
+      { "url": "https://www.nasa.gov/videos/", "depth": 1, "maxPages": 20 }
+    ]
+  }
+}

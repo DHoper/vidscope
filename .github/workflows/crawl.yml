@@ -1,0 +1,55 @@
+name: Crawl videos
+
+on:
+  schedule:
+    # 每 3 小時跑一次（UTC）。YouTube 免費配額有限，不建議再更頻繁。
+    - cron: '17 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      sources:
+        description: '只跑指定來源（空白 = 全部），例如：archive web'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: crawl
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Test parsers
+        run: node crawler/test.mjs
+
+      - name: Crawl
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          VIMEO_TOKEN: ${{ secrets.VIMEO_TOKEN }}
+          ONLY_SOURCES: ${{ github.event.inputs.sources }}
+        # ONLY_SOURCES 刻意不加引號，讓 "archive web" 拆成兩個參數
+        run: node crawler/index.mjs $ONLY_SOURCES
+
+      - name: Commit data
+        run: |
+          git config user.name "vidscope-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "沒有新資料"
+          else
+            git commit -m "data: update $(date -u +'%Y-%m-%d %H:%M') UTC"
+            git push
+          fi
