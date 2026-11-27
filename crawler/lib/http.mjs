@@ -1,7 +1,8 @@
 // 共用的 HTTP 工具：統一 User-Agent、逾時、錯誤處理。
 // 這個檔案和 archive / wikimedia / dailymotion 等 adapter 也會在瀏覽器裡直接使用（即時搜尋），
 // 所以不能直接碰 process（瀏覽器沒有），一律透過 env 讀環境變數。
-const IS_NODE = typeof window === 'undefined';
+// 瀏覽器擴充功能的背景程式也沒有 window，所以用 process.versions.node 判斷是不是 Node。
+const IS_NODE = typeof globalThis.process !== 'undefined' && Boolean(globalThis.process.versions?.node);
 export const env = (IS_NODE && globalThis.process?.env) || {};
 
 export const USER_AGENT = env.CRAWLER_USER_AGENT || 'VidscopeBot/0.1 (+https://github.com/DHoper/vidscope)';

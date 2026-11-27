@@ -8,15 +8,27 @@
 - **插件式來源**：每個平台是一個 adapter，要加新來源只要寫一個檔案。
 - **下載**：只有來源本身提供下載時才顯示下載按鈕（Internet Archive、Wikimedia Commons、Pexels、Pixabay、創作者開放下載的 Vimeo 影片，以及頁面上有 `<a download>` 連結的網站）。
 
-## 兩種用法
+## 怎麼用
 
-| | 網頁版（GitHub Pages） | 本機完整版 |
-| --- | --- | --- |
-| 怎麼用 | 直接打開 https://dhoper.github.io/vidscope/ | 下載後 `docker compose up -d` |
-| 搜尋時即時查詢 | Internet Archive、Wikimedia Commons、Dailymotion | 以上全部，加上**全網搜尋**（SearXNG），以及有設金鑰的 YouTube、Vimeo、Pexels、Pixabay |
-| 預先爬好的索引 | 有（每 3 小時更新） | 有，而且你搜過的結果會存進本機索引 |
+直接打開 **https://dhoper.github.io/vidscope/** 就能搜尋。每次搜尋都會即時去 Internet Archive、Wikimedia Commons、Dailymotion 找影片。
 
-## 本機完整版（全網即時搜尋）
+想連 **YouTube 和整個網路**一起搜，裝上「Vidscope 全網搜尋」擴充功能就好，網站會自動偵測並使用它。
+
+## 安裝全網搜尋擴充功能
+
+上架 Chrome 線上應用程式商店之前，先用手動安裝（Chrome、Edge、Brave 都可以）：
+
+1. 下載 [vidscope-extension.zip](https://github.com/DHoper/vidscope/raw/main/dist/vidscope-extension.zip)，解壓縮到一個不會刪掉的資料夾
+2. 在網址列輸入 `chrome://extensions`（Edge 是 `edge://extensions`）
+3. 打開右上角的「開發人員模式」
+4. 按「載入未封裝項目」，選剛剛解壓縮的資料夾
+5. 打開 https://dhoper.github.io/vidscope/ ，頁面最下面顯示「全網搜尋已開啟」就成功了
+
+擴充功能只在 Vidscope 網站上運作。你搜尋時，它會用 Bing 影片搜尋和 YouTube 搜尋找影片，再打開不認得的網站找播放器。它只接收你輸入的關鍵字，不會讀取其他網站上的資料。
+
+開發者：改了 `crawler/lib/` 或 `crawler/adapters/web.mjs`、`discover.mjs` 之後，執行 `node extension/sync.mjs` 同步，再執行 `node extension/pack.mjs` 重新打包。
+
+## 進階：本機伺服器版（給開發者）
 
 需要先安裝 [Docker Desktop](https://www.docker.com/products/docker-desktop/)。
 

@@ -10,6 +10,7 @@ import * as wikimedia from '../crawler/adapters/wikimedia.mjs';
 import * as dailymotion from '../crawler/adapters/dailymotion.mjs';
 
 const BROWSER_SOURCES = [archive, wikimedia, dailymotion];
+const EXT_LINK = '<a href="https://github.com/DHoper/vidscope#安裝全網搜尋擴充功能" target="_blank" rel="noopener">安裝全網搜尋擴充功能</a>';
 const PAGE_SIZE = 48;
 const LIVE_DELAY_MS = 600;
 
@@ -287,9 +288,10 @@ function emptyForQuery() {
   const tips = [];
   if (state.source !== 'all') tips.push(`<button type="button" class="link" data-action="all-sources">改成搜尋全部來源</button>`);
   if (state.downloadOnly) tips.push(`<button type="button" class="link" data-action="allow-all">也顯示不能下載的影片</button>`);
-  const body = state.backend
-    ? '換個寫法試試，例如改用英文片名，或拿掉幾個字。'
-    : '這個網頁版會即時搜尋 Internet Archive、Wikimedia Commons 和 Dailymotion。想搜尋全網，請用<a href="https://github.com/DHoper/vidscope#本機完整版全網即時搜尋" target="_blank" rel="noopener">本機完整版</a>；也可以改用英文片名再搜一次。';
+  const body =
+    state.backend || hasExtension()
+      ? '換個寫法試試，例如改用英文片名，或拿掉幾個字。'
+      : `目前只搜尋了 Internet Archive、Wikimedia Commons 和 Dailymotion。${EXT_LINK}之後，就能連 YouTube 和整個網路一起搜尋；也可以改用英文片名再搜一次。`;
   return empty(`沒有找到「${state.q}」的影片`, body, tips.length ? `<p class="empty-actions">${tips.join('')}</p>` : '');
 }
 
@@ -347,13 +349,33 @@ async function runLive(q) {
     return;
   }
 
-  state.liveStatus = Object.fromEntries(BROWSER_SOURCES.map((a) => [a.name, 'loading']));
+  const jobs = BROWSER_SOURCES.map((a) => [a.name, () => a.search(q, { limit: 24 })]);
+  if (hasExtension()) jobs.unshift(['discover', () => extensionSearch(q, 24)]);
+  state.liveStatus = Object.fromEntries(jobs.map(([name]) => [name, 'loading']));
   render();
-  await Promise.all(
-    BROWSER_SOURCES.map((a) =>
-      a.search(q, { limit: 24 }).then((list) => add(a.name, list), (e) => fail(a.name, e)),
-    ),
-  );
+  await Promise.all(jobs.map(([name, run]) => run().then((list) => add(name, list), (e) => fail(name, e))));
+}
+
+// ---------- 擴充功能：全網搜尋 ----------
+const hasExtension = () => Boolean(document.documentElement.dataset.vidscopeExt);
+
+function extensionSearch(q, limit) {
+  return new Promise((resolve, reject) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const timer = setTimeout(() => {
+      window.removeEventListener('message', onMessage);
+      reject(new Error('全網搜尋逾時'));
+    }, 45000);
+    function onMessage(e) {
+      if (e.source !== window || e.data?.type !== 'vidscope:result' || e.data.id !== id) return;
+      clearTimeout(timer);
+      window.removeEventListener('message', onMessage);
+      if (e.data.ok) resolve(Array.isArray(e.data.results) ? e.data.results : []);
+      else reject(new Error(e.data.error || '全網搜尋失敗'));
+    }
+    window.addEventListener('message', onMessage);
+    window.postMessage({ type: 'vidscope:search', id, q, limit }, location.origin);
+  });
 }
 
 async function detectBackend() {
@@ -544,11 +566,11 @@ async function load() {
   state.meta = meta;
   state.backend = backend;
 
-  const mode = backend
-    ? (backend.searxng ? '本機完整版，搜尋時會即時搜尋全網' : '本機版，搜尋時會即時搜尋各平台')
-    : '網頁版，搜尋時會即時搜尋 Internet Archive、Wikimedia Commons 和 Dailymotion';
+  const mode = hasExtension() || backend?.searxng
+    ? '全網搜尋已開啟'
+    : `目前只搜尋 Internet Archive、Wikimedia Commons 和 Dailymotion，${EXT_LINK}可搜尋全網`;
   const updated = meta?.updatedAt ? `索引更新於 ${new Date(meta.updatedAt).toLocaleString('zh-TW', { dateStyle: 'medium', timeStyle: 'short' })}` : '';
-  els.updated.textContent = [mode, updated].filter(Boolean).join('。');
+  els.updated.innerHTML = [mode, esc(updated)].filter(Boolean).join('。');
 
   renderSuggest();
   scheduleLive(true);
