@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/style.css?v=9">
+  <link rel="stylesheet" href="assets/style.css?v=11">
 </head>
 <body>
   <a class="skip" href="#grid">跳到影片列表</a>
@@ -32,6 +32,11 @@
       </form>
 
       <div class="suggest" id="suggest" aria-label="常用關鍵字"></div>
+
+      <div class="ext-banner" id="extBanner" hidden>
+        <p>目前只搜尋 Internet Archive、Wikimedia Commons 和 Dailymotion。裝上擴充功能，就能連 Google、Bing 找得到的整個網路一起搜。</p>
+        <button type="button" class="btn btn-lamp" id="installBtn">安裝全網搜尋</button>
+      </div>
     </div>
   </header>
 
@@ -39,6 +44,11 @@
     <section class="toolbar" aria-label="篩選與排序">
       <div class="sources" id="sourceChips" role="group" aria-label="依來源篩選"></div>
       <div class="toolbar-right">
+        <label class="switch">
+          <input type="checkbox" id="includeYouTube">
+          <span class="switch-track" aria-hidden="true"></span>
+          <span>包含 YouTube 影片</span>
+        </label>
         <label class="switch">
           <input type="checkbox" id="downloadOnly">
           <span class="switch-track" aria-hidden="true"></span>
@@ -96,6 +106,26 @@
     </div>
   </dialog>
 
-  <script src="assets/app.js?v=9" type="module"></script>
+  <dialog id="installDialog" class="install" aria-labelledby="installTitle">
+    <h2 id="installTitle">安裝全網搜尋擴充功能</h2>
+    <p class="install-lead">擴充功能還沒上架 Chrome 線上應用程式商店，上架後就能一鍵安裝。在那之前，照下面四步手動安裝，大約一分鐘。支援 Chrome、Edge、Brave。</p>
+    <ol class="install-steps">
+      <li>
+        <a class="btn btn-lamp" href="https://github.com/DHoper/vidscope/raw/main/dist/vidscope-extension.zip" download>下載擴充功能</a>
+        <span>下載後解壓縮，資料夾放在之後不會刪掉的地方。</span>
+      </li>
+      <li>
+        <span>在網址列貼上這串網址並按 Enter（網頁上的連結打不開它，只能貼上）：</span>
+        <span class="copy-row"><code id="extUrl">chrome://extensions</code><button type="button" class="btn" id="copyExtUrl">複製</button></span>
+      </li>
+      <li><span>打開右上角的「開發人員模式」。</span></li>
+      <li><span>按「載入未封裝項目」，選剛才解壓縮的資料夾。回到這個頁面重新整理，看到「全網搜尋已開啟」就完成了。</span></li>
+    </ol>
+    <div class="install-foot">
+      <button type="button" class="btn" id="installClose">關閉</button>
+    </div>
+  </dialog>
+
+  <script src="assets/app.js?v=11" type="module"></script>
 </body>
 </html>

@@ -41,16 +41,26 @@ const state = {
   q: '',
   source: 'all',
   downloadOnly: false,
+  includeYouTube: readPref('includeYouTube') === '1',
   sort: 'relevant',
   shown: PAGE_SIZE,
   list: [],           // 目前畫面上的完整清單（給播放器上一部 / 下一部用）
   playing: -1,
 };
 
+function readPref(k) {
+  try { return localStorage.getItem(`vidscope:${k}`); } catch { return null; }
+}
+function writePref(k, v) {
+  try { localStorage.setItem(`vidscope:${k}`, v); } catch {}
+}
+
 const $ = (id) => document.getElementById(id);
 const els = {
   q: $('q'), form: $('searchForm'), suggest: $('suggest'), chips: $('sourceChips'),
-  downloadOnly: $('downloadOnly'), sort: $('sort'), status: $('status'), grid: $('grid'),
+  downloadOnly: $('downloadOnly'), includeYouTube: $('includeYouTube'),
+  extBanner: $('extBanner'), installBtn: $('installBtn'), installDialog: $('installDialog'),
+  installClose: $('installClose'), copyExtUrl: $('copyExtUrl'), sort: $('sort'), status: $('status'), grid: $('grid'),
   more: $('moreBtn'), sentinel: $('sentinel'), updated: $('updated'),
   player: $('player'), pTitle: $('pTitle'), pMedia: $('pMedia'), pMeta: $('pMeta'),
   pDesc: $('pDesc'), pActions: $('pActions'), close: $('closeBtn'), prev: $('prevBtn'), next: $('nextBtn'),
@@ -125,8 +135,16 @@ function candidates() {
   if (state.q && state.liveQuery === state.q) for (const v of state.live.values()) byId.set(v.id, { ...v, _live: true });
   for (const v of state.index) if (!byId.has(v.id) && matches(v, terms)) byId.set(v.id, v);
   let list = [...byId.values()];
+  if (!state.includeYouTube) list = list.filter((v) => !isYouTube(v));
   if (state.downloadOnly) list = list.filter((v) => safeUrl(v.downloadUrl));
   return list;
+}
+
+// YouTube 的影片（不論是 YouTube 來源，還是全網搜尋找到的 YouTube 網址）
+function isYouTube(v) {
+  if (v.source === 'youtube') return true;
+  return /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)$/i.test(hostOf(v.url || '')) ||
+    /youtube(-nocookie)?\.com\/embed\//i.test(v.embedUrl || '');
 }
 
 // 判斷一部影片跟關鍵字是不是真的相關：
@@ -222,10 +240,22 @@ function skeletons(n) {
   return Array.from({ length: n }, () => '<div class="video skeleton" aria-hidden="true"><span class="frame"></span><span class="line"></span><span class="line short"></span></div>').join('');
 }
 
+let extNotice = '';
+window.addEventListener('message', (e) => {
+  if (e.source !== window || e.data?.type !== 'vidscope:status') return;
+  extNotice = String(e.data.text || '');
+  render();
+  if (extNotice.startsWith('驗證完成')) setTimeout(() => { extNotice = ''; render(); }, 4000);
+});
+
 function liveSummary() {
+  if (extNotice) return extNotice;
   const entries = Object.entries(state.liveStatus);
   if (!entries.length) return '';
   const loading = entries.filter(([, s]) => s === 'loading').map(([k]) => label(k));
+  if (state.ext?.loading && state.ext.page >= 0 && state.liveStatus.discover === 'loading' && loading.length === 1) {
+    return `正在從 Google 和 Bing 載入更多結果（第 ${state.ext.page + 5} 頁）`;
+  }
   if (loading.length) return `正在搜尋 ${loading.join('、')}`;
   const failed = entries.filter(([, s]) => s?.error).map(([k]) => label(k));
   return failed.length ? `${failed.join('、')} 這次沒有回應` : '';
@@ -244,7 +274,8 @@ function render() {
   const weak = pool.filter((v) => !isStrongMatch(v, state.q));
   state.list = [...strong, ...weak];
   const visible = state.list.slice(0, state.shown);
-  const loading = isLoading();
+  // 「只看可下載」時，擴充功能還在逐頁檢查就算是「還在找」，不要太早顯示「找不到」
+  const loading = isLoading() || Boolean(state.downloadOnly && state.q && hasExtension() && state.ext?.hasMore);
 
   if (!state.index.length && !state.live.size && !loading) {
     els.grid.innerHTML = empty('還沒有任何影片', '在上面輸入關鍵字，網站會即時去各平台搜尋。');
@@ -264,7 +295,9 @@ function render() {
   }
 
   const parts = [];
-  if (state.list.length) {
+  if (state.downloadOnly && state.q && hasExtension() && (state.ext?.hasMore || isLoading())) {
+    parts.push(`已找到 ${state.list.length.toLocaleString()} 部可下載的影片，還在逐頁檢查 Google 和 Bing 的結果`);
+  } else if (state.list.length) {
     parts.push(
       state.q
         ? `「${state.q}」完全符合 ${strong.length.toLocaleString()} 部${weak.length ? `，相近 ${weak.length.toLocaleString()} 部` : ''}`
@@ -276,7 +309,8 @@ function render() {
   els.status.innerHTML = parts.map((p, i) => `<span class="${i ? 'status-live' : ''}">${esc(p)}</span>`).join('');
   els.status.classList.toggle('is-loading', loading);
 
-  els.more.hidden = state.list.length <= state.shown;
+  const extMore = Boolean(state.ext?.hasMore && !state.ext.loading && hasExtension() && state.q === state.liveQuery);
+  els.more.hidden = state.list.length <= state.shown && !extMore;
   els.chips.querySelectorAll('.source').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.source === state.source)));
 }
 
@@ -350,31 +384,83 @@ async function runLive(q) {
   }
 
   const jobs = BROWSER_SOURCES.map((a) => [a.name, () => a.search(q, { limit: 24 })]);
-  if (hasExtension()) jobs.unshift(['discover', () => extensionSearch(q, 500)]);
+  state.ext = { page: 0, hasMore: false, loading: false };
+  if (hasExtension()) {
+    jobs.unshift([
+      'discover',
+      () =>
+        extensionSearch(q, 0).then((r) => {
+          if (!ctrl.signal.aborted) state.ext.hasMore = r.hasMore;
+          return r.results;
+        }),
+    ]);
+  }
   state.liveStatus = Object.fromEntries(jobs.map(([name]) => [name, 'loading']));
   render();
   await Promise.all(jobs.map(([name, run]) => run().then((list) => add(name, list), (e) => fail(name, e))));
+  // 第一批出來後，自動一頁一頁往後抓 Google 和 Bing，直到沒有結果為止
+  if (!ctrl.signal.aborted && state.ext?.hasMore) keepLoadingFromExtension(state.ext, q);
+}
+
+const MAX_EXTRA_PAGES = 40; // 保險上限：避免搜尋引擎無限回傳重複頁面時停不下來
+
+async function keepLoadingFromExtension(ext, q) {
+  while (state.ext === ext && ext.hasMore && state.liveQuery === q && ext.page < MAX_EXTRA_PAGES) {
+    await new Promise((r) => setTimeout(r, 1200)); // 每頁之間停一下，降低被 Google 要求驗證的機率
+    if (state.ext !== ext || state.liveQuery !== q) return;
+    const before = state.live.size;
+    await loadMoreFromExtension();
+    if (state.live.size === before && ext.page > 3) ext.hasMore = false; // 連續沒有新東西就停
+  }
 }
 
 // ---------- 擴充功能：全網搜尋 ----------
 const hasExtension = () => Boolean(document.documentElement.dataset.vidscopeExt);
 
-function extensionSearch(q, limit) {
+// 往下捲到底時，請擴充功能再往後抓一頁 Google 和 Bing
+async function loadMoreFromExtension() {
+  const ext = state.ext;
+  if (!ext || !ext.hasMore || ext.loading || !hasExtension()) return;
+  const q = state.liveQuery;
+  if (!q || q !== state.q) return;
+  ext.loading = true;
+  state.liveStatus.discover = 'loading';
+  render();
+  try {
+    const r = await extensionSearch(q, ext.page + 1);
+    if (state.liveQuery !== q || state.ext !== ext) return; // 期間換了關鍵字
+    ext.page += 1;
+    ext.hasMore = r.hasMore;
+    for (const v of r.results) if (!state.live.has(v.id)) state.live.set(v.id, v);
+    state.liveStatus.discover = { count: state.live.size };
+  } catch (e) {
+    if (state.ext === ext) {
+      ext.hasMore = false;
+      state.liveStatus.discover = { error: e.message };
+    }
+  } finally {
+    ext.loading = false;
+    if (state.ext === ext) render();
+  }
+}
+
+function extensionSearch(q, page = 0, limit = 500) {
   return new Promise((resolve, reject) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const timer = setTimeout(() => {
       window.removeEventListener('message', onMessage);
       reject(new Error('全網搜尋逾時'));
-    }, 45000);
+    }, 6 * 60 * 1000); // 可能要等使用者完成 Google 驗證，所以等久一點
     function onMessage(e) {
       if (e.source !== window || e.data?.type !== 'vidscope:result' || e.data.id !== id) return;
       clearTimeout(timer);
       window.removeEventListener('message', onMessage);
-      if (e.data.ok) resolve(Array.isArray(e.data.results) ? e.data.results : []);
+      if (e.data.ok) resolve({ results: Array.isArray(e.data.results) ? e.data.results : [], hasMore: Boolean(e.data.hasMore) });
       else reject(new Error(e.data.error || '全網搜尋失敗'));
     }
     window.addEventListener('message', onMessage);
-    window.postMessage({ type: 'vidscope:search', id, q, limit }, location.origin);
+    const options = { includeYouTube: state.includeYouTube, deepAll: state.downloadOnly };
+    window.postMessage({ type: 'vidscope:search', id, q, page, limit, ...options }, location.origin);
   });
 }
 
@@ -489,18 +575,50 @@ els.chips.addEventListener('click', (e) => {
   syncUrl();
   render();
 });
+// 這兩個開關會改變擴充功能的搜尋方式，所以切換後重新搜尋一次
+function restartLive() {
+  state.shown = PAGE_SIZE;
+  if (state.q && hasExtension()) {
+    state.liveQuery = '';
+    state.liveStatus = {};
+    scheduleLive(true);
+  }
+  render();
+}
 els.downloadOnly.addEventListener('change', () => {
   state.downloadOnly = els.downloadOnly.checked;
-  state.shown = PAGE_SIZE;
-  render();
+  restartLive();
+});
+els.includeYouTube.addEventListener('change', () => {
+  state.includeYouTube = els.includeYouTube.checked;
+  writePref('includeYouTube', state.includeYouTube ? '1' : '0');
+  restartLive();
+});
+
+// 安裝說明
+els.installBtn.addEventListener('click', () => els.installDialog.showModal());
+els.installClose.addEventListener('click', () => els.installDialog.close());
+els.installDialog.addEventListener('click', (e) => { if (e.target === els.installDialog) els.installDialog.close(); });
+els.copyExtUrl.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText('chrome://extensions');
+    els.copyExtUrl.textContent = '已複製';
+    setTimeout(() => { els.copyExtUrl.textContent = '複製'; }, 2000);
+  } catch {
+    els.copyExtUrl.textContent = '請手動選取複製';
+  }
 });
 els.sort.addEventListener('change', () => {
   state.sort = els.sort.value;
   render();
 });
 els.more.addEventListener('click', () => {
-  state.shown += PAGE_SIZE;
-  render();
+  if (state.list.length > state.shown) {
+    state.shown += PAGE_SIZE;
+    render();
+  } else {
+    loadMoreFromExtension();
+  }
 });
 els.grid.addEventListener('click', (e) => {
   const hit = e.target.closest('.video-hit');
@@ -518,10 +636,14 @@ document.addEventListener('keydown', (e) => {
 });
 
 // 捲到底自動載入更多
+// 已經顯示完手上的結果時，再向擴充功能要下一頁
 new IntersectionObserver((entries) => {
-  if (entries[0].isIntersecting && state.list.length > state.shown) {
+  if (!entries[0].isIntersecting) return;
+  if (state.list.length > state.shown) {
     state.shown += PAGE_SIZE;
     render();
+  } else {
+    loadMoreFromExtension();
   }
 }, { rootMargin: '600px' }).observe(els.sentinel);
 
@@ -566,6 +688,8 @@ async function load() {
   state.meta = meta;
   state.backend = backend;
 
+  els.includeYouTube.checked = state.includeYouTube;
+  els.extBanner.hidden = hasExtension() || Boolean(backend?.searxng);
   const mode = hasExtension() || backend?.searxng
     ? '全網搜尋已開啟'
     : `目前只搜尋 Internet Archive、Wikimedia Commons 和 Dailymotion，${EXT_LINK}可搜尋全網`;

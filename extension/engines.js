@@ -82,11 +82,12 @@ export function parseBing(html) {
   return out;
 }
 
-// 一次抓前幾頁（Bing 每頁約 35 筆），重複的之後會去掉
-async function searchBing(q, pages = 3) {
-  const urls = Array.from({ length: pages }, (_, i) =>
-    `https://www.bing.com/videos/search?q=${encodeURIComponent(q)}&FORM=HDRSC3${i ? `&first=${i * 35 + 1}` : ''}`,
-  );
+// 抓第 from 頁起的 count 頁（Bing 每頁約 35 筆），重複的之後會去掉
+async function searchBing(q, from = 0, count = 3) {
+  const urls = Array.from({ length: count }, (_, k) => {
+    const i = from + k;
+    return `https://www.bing.com/videos/search?q=${encodeURIComponent(q)}&FORM=HDRSC3${i ? `&first=${i * 35 + 1}` : ''}`;
+  });
   const settled = await Promise.allSettled(urls.map((u) => getText(u)));
   const ok = settled.filter((s) => s.status === 'fulfilled');
   if (!ok.length) throw settled[0].reason;
@@ -188,16 +189,17 @@ async function pool(items, size, fn) {
 // Google 的搜尋頁一定要執行 JavaScript 才會出結果，直接抓 HTML 拿不到東西。
 // 所以在背景開一個不切換過去的分頁，讓 Google 正常載入，再讀出結果連結，讀完立刻關掉。
 // 如果 Google 要求人機驗證，就停下來請使用者自己去完成，不會試圖繞過。
-async function searchGoogle(q, pages = 3) {
+// 抓第 from 頁起的 count 頁（每頁約 10 筆）
+async function searchGoogle(q, from = 0, count = 3, ctx = {}) {
   const tab = await chrome.tabs.create({ url: 'about:blank', active: false });
   const out = [];
   try {
-    for (let p = 0; p < pages; p++) {
+    for (let p = from; p < from + count; p++) {
       const url = `https://www.google.com/search?q=${encodeURIComponent(q)}&tbm=vid&hl=zh-TW${p ? `&start=${p * 10}` : ''}`;
       await loadTab(tab.id, url);
-      const now = await chrome.tabs.get(tab.id);
-      if (/google\.[^/]+\/sorry\//.test(now.url || '')) {
-        throw new Error('Google 要求人機驗證：請先到 google.com 搜尋一次並完成驗證');
+      if (isCaptcha((await chrome.tabs.get(tab.id)).url)) {
+        // Google 要求人機驗證：把分頁切到前面讓使用者自己完成，完成後自動繼續
+        await askHumanToVerify(tab, ctx);
       }
       await new Promise((r) => setTimeout(r, 400));
       const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: readGoogleResults });
@@ -208,6 +210,42 @@ async function searchGoogle(q, pages = 3) {
     chrome.tabs.remove(tab.id).catch(() => {});
   }
   return out;
+}
+
+const isCaptcha = (url) => /google\.[^/]+\/sorry\//.test(url || '');
+
+// 把驗證分頁切到前面，等使用者完成（最多等 5 分鐘），完成後切回原本的 Vidscope 分頁
+async function askHumanToVerify(tab, ctx) {
+  ctx.notify?.('Google 要求確認你不是機器人。請在剛跳出的 Google 分頁完成驗證，完成後會自動繼續搜尋。');
+  await chrome.tabs.update(tab.id, { active: true });
+  await chrome.windows.update(tab.windowId, { focused: true }).catch(() => {});
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('Google 驗證逾時，請重新搜尋'));
+    }, 5 * 60 * 1000);
+    const onUpdated = (id, info, t) => {
+      if (id === tab.id && info.status === 'complete' && !isCaptcha(t.url)) {
+        cleanup();
+        resolve();
+      }
+    };
+    const onRemoved = (id) => {
+      if (id === tab.id) {
+        cleanup();
+        reject(new Error('Google 驗證分頁被關掉了，請重新搜尋'));
+      }
+    };
+    const cleanup = () => {
+      clearTimeout(timer);
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+      chrome.tabs.onRemoved.removeListener(onRemoved);
+    };
+    chrome.tabs.onUpdated.addListener(onUpdated);
+    chrome.tabs.onRemoved.addListener(onRemoved);
+  });
+  ctx.notify?.('驗證完成，繼續搜尋中');
+  if (ctx.returnTabId) chrome.tabs.update(ctx.returnTabId, { active: true }).catch(() => {});
 }
 
 function loadTab(tabId, url) {
@@ -255,10 +293,22 @@ function readGoogleResults() {
 }
 
 // ---------- 主流程 ----------
-export async function searchWeb(q, limit = 500) {
-  const engines = { google: searchGoogle, bing: searchBing, youtube: searchYouTube };
+// page = 0：第一次搜尋，Google、Bing 各抓前 3 頁，加上 YouTube
+// page >= 1：使用者往下捲到底時，Google、Bing 各再往後抓 1 頁，直到兩邊都沒有結果為止
+// includeYouTube：要不要包含 YouTube 影片（預設不要，YouTube 的影片用 Google 就搜得到）
+// deepAll：打開每一個結果頁檢查（「只看可下載」時需要，因為要打開頁面才知道能不能下載）
+export async function searchWeb(q, { page = 0, limit = 500, ctx = {}, includeYouTube = false, deepAll = false } = {}) {
+  // 第一次先抓 3 頁讓結果快點出來，之後網站會自動一頁一頁往後要，直到沒有結果
+  const first = page === 0;
+  const from = first ? 0 : page + 2;
+  const count = first ? 3 : 1;
+  const engines = {
+    google: () => searchGoogle(q, from, count, ctx),
+    bing: () => searchBing(q, from, count),
+    ...(first && includeYouTube ? { youtube: () => searchYouTube(q) } : {}),
+  };
   const status = {};
-  const settled = await Promise.allSettled(Object.values(engines).map((fn) => fn(q)));
+  const settled = await Promise.allSettled(Object.values(engines).map((fn) => fn()));
 
   // 兩邊交錯合併，避免某一邊全部排在前面
   const lists = [];
@@ -281,6 +331,7 @@ export async function searchWeb(q, limit = 500) {
       const it = l[k];
       const c = it && canonical(it.url);
       if (!c || seen.has(c)) continue;
+      if (!includeYouTube && youtubeId(c)) continue;
       seen.add(c);
       merged.push({ ...it, url: c });
       if (merged.length >= limit) break;
@@ -289,10 +340,10 @@ export async function searchWeb(q, limit = 500) {
 
   // 補資料：YouTube 用 oEmbed，其他網站最多打開 10 頁
   let opened = 0;
-  const enriched = await pool(merged, 6, (it) => {
+  const enriched = await pool(merged, deepAll ? 8 : 6, (it) => {
     if (youtubeId(it.url)) return it.title && it.thumbnail ? it : enrichYouTube(it);
     if (knownEmbed(it.url)) return it;
-    return opened++ < 20 ? enrichPage(it) : it;
+    return deepAll || opened++ < 20 ? enrichPage(it) : it;
   });
 
   const results = enriched
@@ -314,5 +365,7 @@ export async function searchWeb(q, limit = 500) {
         license: it.license,
       }),
     );
-  return { results, engines: status };
+  // Google 或 Bing 這一頁還有東西，就代表可能還有下一頁
+  const hasMore = (status.google?.count || 0) + (status.bing?.count || 0) > 0;
+  return { results, engines: status, page, hasMore };
 }

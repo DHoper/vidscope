@@ -7,11 +7,26 @@ window.addEventListener('message', (event) => {
   const msg = event.data;
   if (!msg || msg.type !== 'vidscope:search' || typeof msg.q !== 'string') return;
 
-  chrome.runtime.sendMessage({ type: 'search', q: msg.q.slice(0, 200), limit: Math.min(Number(msg.limit) || 500, 500) }, (resp) => {
+  const request = {
+    type: 'search',
+    q: msg.q.slice(0, 200),
+    page: Math.max(0, Math.floor(Number(msg.page) || 0)),
+    limit: Math.min(Number(msg.limit) || 500, 500),
+    includeYouTube: msg.includeYouTube === true,
+    deepAll: msg.deepAll === true,
+  };
+  chrome.runtime.sendMessage(request, (resp) => {
     const error = chrome.runtime.lastError?.message;
     window.postMessage(
       { type: 'vidscope:result', id: msg.id, ...(error ? { ok: false, error } : resp) },
       location.origin,
     );
   });
+});
+
+// 搜尋途中的提示（例如請使用者完成 Google 驗證），轉給網頁顯示
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type === 'vidscope:status' && typeof msg.text === 'string') {
+    window.postMessage({ type: 'vidscope:status', text: msg.text }, location.origin);
+  }
 });
