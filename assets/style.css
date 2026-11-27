@@ -200,6 +200,15 @@ img { display: block; }
 .video-source { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
 .video-channel { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* 完全符合與相近結果之間的分隔 */
+.divider {
+  grid-column: 1 / -1; padding: 20px 0 4px; border-top: 1px solid var(--line);
+  color: var(--ink-2); font-size: 14px;
+}
+.divider:first-child { border-top: 0; padding-top: 0; }
+.divider p { margin: 0; }
+.divider-title { font-size: 17px; font-weight: 700; color: var(--ink); margin-bottom: 4px !important; }
+
 /* 載入中的佔位 */
 .skeleton .frame { animation: breathe 1.4s ease-in-out infinite; }
 .skeleton .line { display: block; height: 12px; margin-top: 14px; border-radius: 6px; background: var(--frame); width: 85%; }

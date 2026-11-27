@@ -128,6 +128,25 @@ function candidates() {
   return list;
 }
 
+// 判斷一部影片跟關鍵字是不是真的相關：
+// 英文等有空格的語言看每個詞是否都出現；中文看兩字一組的片段有多少出現在標題或描述
+function isStrongMatch(v, q) {
+  if (!q) return true;
+  const hay = `${v.title} ${v.description}`.toLowerCase();
+  const query = q.toLowerCase();
+  if (hay.includes(query)) return true;
+  const terms = termsOf(query);
+  if (terms.length > 1 && terms.every((t) => hay.includes(t))) return true;
+  const compact = query.replace(/\s+/g, '');
+  if (/[㐀-鿿]/.test(compact) && compact.length >= 3) {
+    const grams = [];
+    for (let i = 0; i < compact.length - 1; i++) grams.push(compact.slice(i, i + 2));
+    const hit = grams.filter((g) => hay.includes(g)).length;
+    return hit / grams.length >= 0.6;
+  }
+  return false;
+}
+
 function score(v, terms) {
   // 標題命中越多越前面；即時結果略加分；可播放的再加一點
   const title = (v.title || '').toLowerCase();
@@ -218,7 +237,11 @@ function isLoading() {
 function render() {
   const all = candidates();
   renderChips(all);
-  state.list = sorted(state.source === 'all' ? all : all.filter((v) => v.source === state.source));
+  const pool = sorted(state.source === 'all' ? all : all.filter((v) => v.source === state.source));
+  // 完全符合的排前面；平台搜尋引擎給的「相近」結果排後面，並清楚標示
+  const strong = pool.filter((v) => isStrongMatch(v, state.q));
+  const weak = pool.filter((v) => !isStrongMatch(v, state.q));
+  state.list = [...strong, ...weak];
   const visible = state.list.slice(0, state.shown);
   const loading = isLoading();
 
@@ -229,11 +252,24 @@ function render() {
   } else if (!state.list.length) {
     els.grid.innerHTML = emptyForQuery();
   } else {
-    els.grid.innerHTML = visible.map(card).join('') + (loading ? skeletons(4) : '');
+    const html = visible.map((v, i) => {
+      const divider =
+        state.q && i === strong.length && weak.length
+          ? `<div class="divider" role="separator"><p class="divider-title">${strong.length ? '以下是相關度較低的結果' : `沒有標題或說明完全符合「${esc(state.q)}」的影片`}</p><p>各平台的搜尋會回傳字面相近的影片，不一定是你要找的。${strong.length ? '' : '試試換成英文片名，或用本機完整版搜尋全網。'}</p></div>`
+          : '';
+      return divider + card(v, i);
+    });
+    els.grid.innerHTML = html.join('') + (loading ? skeletons(4) : '');
   }
 
   const parts = [];
-  if (state.list.length) parts.push(state.q ? `「${state.q}」找到 ${state.list.length.toLocaleString()} 部影片` : `共 ${state.list.length.toLocaleString()} 部影片`);
+  if (state.list.length) {
+    parts.push(
+      state.q
+        ? `「${state.q}」完全符合 ${strong.length.toLocaleString()} 部${weak.length ? `，相近 ${weak.length.toLocaleString()} 部` : ''}`
+        : `共 ${state.list.length.toLocaleString()} 部影片`,
+    );
+  }
   const live = liveSummary();
   if (live) parts.push(live);
   els.status.innerHTML = parts.map((p, i) => `<span class="${i ? 'status-live' : ''}">${esc(p)}</span>`).join('');
