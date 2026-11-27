@@ -184,9 +184,79 @@ async function pool(items, size, fn) {
   return out;
 }
 
+// ---------- Google 影片搜尋 ----------
+// Google 的搜尋頁一定要執行 JavaScript 才會出結果，直接抓 HTML 拿不到東西。
+// 所以在背景開一個不切換過去的分頁，讓 Google 正常載入，再讀出結果連結，讀完立刻關掉。
+// 如果 Google 要求人機驗證，就停下來請使用者自己去完成，不會試圖繞過。
+async function searchGoogle(q, pages = 3) {
+  const tab = await chrome.tabs.create({ url: 'about:blank', active: false });
+  const out = [];
+  try {
+    for (let p = 0; p < pages; p++) {
+      const url = `https://www.google.com/search?q=${encodeURIComponent(q)}&tbm=vid&hl=zh-TW${p ? `&start=${p * 10}` : ''}`;
+      await loadTab(tab.id, url);
+      const now = await chrome.tabs.get(tab.id);
+      if (/google\.[^/]+\/sorry\//.test(now.url || '')) {
+        throw new Error('Google 要求人機驗證：請先到 google.com 搜尋一次並完成驗證');
+      }
+      await new Promise((r) => setTimeout(r, 400));
+      const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: readGoogleResults });
+      if (!result?.length) break;
+      out.push(...result);
+    }
+  } finally {
+    chrome.tabs.remove(tab.id).catch(() => {});
+  }
+  return out;
+}
+
+function loadTab(tabId, url) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('Google 載入逾時'));
+    }, 20000);
+    const onUpdated = (id, info) => {
+      if (id === tabId && info.status === 'complete') {
+        cleanup();
+        resolve();
+      }
+    };
+    const cleanup = () => {
+      clearTimeout(timer);
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+    };
+    chrome.tabs.onUpdated.addListener(onUpdated);
+    chrome.tabs.update(tabId, { url }).catch((e) => {
+      cleanup();
+      reject(e);
+    });
+  });
+}
+
+// 在 Google 搜尋頁裡執行：每個結果都是一個包著標題（h3）的連結
+function readGoogleResults() {
+  const items = [];
+  const seen = new Set();
+  for (const heading of document.querySelectorAll('a[href] h3, a[href] [role="heading"]')) {
+    const a = heading.closest('a');
+    let href = a.href;
+    try {
+      const u = new URL(href);
+      if (/(^|\.)google\./.test(u.hostname) && u.pathname === '/url') href = u.searchParams.get('q') || u.searchParams.get('url');
+    } catch {}
+    if (!href || !/^https?:/.test(href) || /^https?:\/\/([^/]*\.)?google\./.test(href) || seen.has(href)) continue;
+    seen.add(href);
+    const block = a.closest('[data-hveid]') || a.parentElement;
+    const dur = (block?.innerText || '').match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/);
+    items.push({ url: href, title: heading.innerText.trim(), duration: dur ? dur[0] : null });
+  }
+  return items;
+}
+
 // ---------- 主流程 ----------
 export async function searchWeb(q, limit = 500) {
-  const engines = { bing: searchBing, youtube: searchYouTube };
+  const engines = { google: searchGoogle, bing: searchBing, youtube: searchYouTube };
   const status = {};
   const settled = await Promise.allSettled(Object.values(engines).map((fn) => fn(q)));
 
@@ -222,7 +292,7 @@ export async function searchWeb(q, limit = 500) {
   const enriched = await pool(merged, 6, (it) => {
     if (youtubeId(it.url)) return it.title && it.thumbnail ? it : enrichYouTube(it);
     if (knownEmbed(it.url)) return it;
-    return opened++ < 10 ? enrichPage(it) : it;
+    return opened++ < 20 ? enrichPage(it) : it;
   });
 
   const results = enriched

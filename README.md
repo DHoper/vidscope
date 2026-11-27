@@ -24,7 +24,7 @@
 4. 按「載入未封裝項目」，選剛剛解壓縮的資料夾
 5. 打開 https://dhoper.github.io/vidscope/ ，頁面最下面顯示「全網搜尋已開啟」就成功了
 
-擴充功能只在 Vidscope 網站上運作。你搜尋時，它會用 Bing 影片搜尋和 YouTube 搜尋找影片，再打開不認得的網站找播放器。它只接收你輸入的關鍵字，不會讀取其他網站上的資料。
+擴充功能只在 Vidscope 網站上運作。你搜尋時，它會用 Google 影片搜尋、Bing 影片搜尋和 YouTube 搜尋找影片（Google 需要在背景短暫開一個分頁讀取結果），再打開不認得的網站找播放器。它只接收你輸入的關鍵字，不會讀取其他網站上的資料。
 
 開發者：改了 `crawler/lib/` 或 `crawler/adapters/web.mjs`、`discover.mjs` 之後，執行 `node extension/sync.mjs` 同步，再執行 `node extension/pack.mjs` 重新打包。
 
