@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-11-28T01:30:28.537Z",
-  "total": 958,
+  "updatedAt": "2026-11-28T11:52:42.357Z",
+  "total": 1208,
   "counts": {
     "wikimedia": 121,
-    "discover": 194,
-    "dailymotion": 332,
-    "archive": 311
+    "discover": 239,
+    "archive": 405,
+    "dailymotion": 443
   },
   "sources": {
     "discover": "全網搜尋",
@@ -24,21 +24,21 @@
       "status": "ok",
       "count": 120,
       "errors": [],
-      "ranAt": "2026-11-28T01:30:28.361Z"
+      "ranAt": "2026-11-28T11:52:42.326Z"
     },
     "web": {
       "label": "網頁",
       "status": "ok",
       "count": 0,
       "errors": [],
-      "ranAt": "2026-11-28T01:30:28.362Z"
+      "ranAt": "2026-11-28T11:52:42.326Z"
     },
     "discover": {
       "label": "全網搜尋",
       "status": "ok",
       "count": 120,
       "errors": [],
-      "ranAt": "2026-11-28T01:30:15.276Z"
+      "ranAt": "2026-11-28T11:52:32.841Z"
     },
     "youtube": {
       "label": "YouTube",
@@ -52,14 +52,14 @@
       "status": "ok",
       "count": 120,
       "errors": [],
-      "ranAt": "2026-11-28T01:30:21.981Z"
+      "ranAt": "2026-11-28T11:52:35.245Z"
     },
     "wikimedia": {
       "label": "Wikimedia Commons",
       "status": "ok",
       "count": 120,
       "errors": [],
-      "ranAt": "2026-11-28T01:30:24.635Z"
+      "ranAt": "2026-11-28T11:52:38.004Z"
     },
     "pexels": {
       "label": "Pexels",
